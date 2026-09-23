@@ -15,4 +15,4 @@ My name is Jesus, I am a second year PhD student in Mining Engineering
 Team member 3: One sentence description of Team member 3 (e.g., year, major, etc.).
 My name is Sanjana,Fall 2026 student in Masters in data Science who is interested in data visualization,analysis and learn new dta scienec techniques
 Team member 4: One sentence description of Team member 4 (e.g., year, major, etc.).
-
+My name is Jacob. I am in my first semester studying machine learning, but that may change. 
