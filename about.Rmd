@@ -5,7 +5,7 @@ date: "2026-09-22"
 output: html_document
 ---
 
-This project was developed by [Team Name] For INFO 526 - Data Analysis and Visualization at the University of Arizona, taught by Dr. Anna R. Leach. The team is comprised of the following team members.
+This project was developed by Team Soul For INFO 526 - Data Analysis and Visualization at the University of Arizona, taught by Dr. Anna R. Leach. The team is comprised of the following team members.
 
 Team member 1: One sentence description of Team member 1 (e.g., year, major, etc.).
 
