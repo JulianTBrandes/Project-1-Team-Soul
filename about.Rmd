@@ -10,6 +10,7 @@ This project was developed by Team Soul For INFO 526 - Data Analysis and Visuali
 Team member 1: One sentence description of Team member 1 (e.g., year, major, etc.).
 My name is Julian, I am in my first semester studying data science.  
 Team member 2: One sentence description of Team member 2 (e.g., year, major, etc.).
+My name is Jesus, I am a second year PhD student in Mining Engineering
 
 Team member 3: One sentence description of Team member 3 (e.g., year, major, etc.).
 
