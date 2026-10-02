@@ -1,6 +1,15 @@
+# RStudio
 .Rproj.user
+
+# R
 .Rhistory
 .RData
 .Ruserdata
+
+# renv
+.Rprofile
+renv/.cache/
+renv/library/
+renv/staging/
 
 /.quarto/
