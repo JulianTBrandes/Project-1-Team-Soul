@@ -27,12 +27,13 @@ game_films <- game_films |>
 
 game_films$gap <- game_films$metacritic - game_films$rotten_tomatoes
 
-ggplot(game_films, aes(x=release_date,y=gap)) +
-  geom_point() +
+ggplot(game_films, aes(x=release_date,y=gap)) +   geom_hline(yintercept = 0, linetype = "dashed", color = "grey40") +
+  geom_point(size= 2.5, color="#08519c") +
   labs(
-    title = "Gap between critics and audience across time",
-    x = "release date",
-    y = "Meta Critic Score - Rotten Tomotoes Audience Score"
+    title = "Audiences rate game films higher than critics do",
+    subtitle = "Above 0 means the audience score is higher than the critic score",
+    x = "Release date",
+    y = "Audience minus critics (points)"
   )
   theme_minimal()
 
