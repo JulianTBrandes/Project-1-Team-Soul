@@ -83,13 +83,12 @@ budget_cutoff <- quantile(
   game_films$budget_estimate_today_usd,
   probs = c(0,1/3,2/3,1))
 
-game_films$budget_group <- cut(game_films$budget_estimate_today_usd,breaks=budget_cutoff,labels=c("Low","Medium","High"),include.lowest=TRUE)
-
+game_films$budget_group <- cut(game_films$budget_estimate_today_usd,breaks=budget_cutoff,labels=c("Low\n$3-45M","Medium\n$45-91M","High\n$91-258M"),include.lowest=TRUE)
 game_films %>%
   ggplot(aes(x=budget_group, y=ROI, fill=budget_group)) +
   geom_boxplot(alpha = 0.6) +
-  geom_jitter(color="black", size=0.4, alpha=0.9) +
-  theme_minimal()
+  geom_jitter(color="black", size=0.4, alpha=0.9) + scale_y_continuous(labels = function(x) paste0(x, "x")) +
+  theme_minimal()+
   theme(
     legend.position="none",
     plot.title = element_text(size=11)
