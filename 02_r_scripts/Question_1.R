@@ -85,6 +85,8 @@ budget_cutoff <- quantile(
 
 game_films$budget_group <- cut(game_films$budget_estimate_today_usd,breaks=budget_cutoff,labels=c("Low\n$3-46M","Medium\n$46-92M","High\n$92-259M"),include.lowest=TRUE)
 
+write.csv(game_films, "01_tidy_data/Q1.csv")
+
 game_films %>%
   ggplot(aes(x=budget_group, y=ROI, fill=budget_group,label=title)) +
   geom_boxplot(alpha = 0.6) +
