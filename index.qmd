@@ -1,0 +1,129 @@
+---
+title: "Video Game Movies: Money and Reviews"
+subtitle: "INFO 526 Project 1"
+author: "Team Soul: Jacob Hoover, Sanjana Sudulaganti, Jesus Castillo, Julian Brandes"
+format: html
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+library(dplyr)
+library(ggplot2)
+
+game_films_raw <- readr::read_csv("data/game_films.csv")
+```
+
+## Introduction
+
+<!-- 1-2 paragraphs, max 5 sentences each. Imagine the grader has never seen the dataset.
+Say: what the dataset is, where it comes from (Wikipedia list, published on TidyTuesday),
+how many rows/columns, and describe EVERY variable used in Q1 and Q2.
+Use inline code for numbers, for example: -->
+
+The dataset has `r nrow(game_films_raw)` films and `r ncol(game_films_raw)` columns.
+
+[Write the rest here.]
+
+## Question 1: [Title that matches the question, e.g. "Do bigger budgets earn a better return?"]
+
+### Introduction
+
+<!-- 1-2 paragraphs: the question, which variables are needed (budget_low, budget_high,
+worldwide_box_office, currencies, release_date, OECD CPI), and WHY you are interested. -->
+
+[Write here.]
+
+### Approach
+
+<!-- 1-2 paragraphs: name each plot and say why it is the best choice.
+Plot 1 = boxplot (compares median and spread of ROI across budget groups, handles skewed data).
+Plot 2 = scatterplot (shows budget vs ROI without cutting budget into groups).
+Two different plot types, and at least one uses color or facets (the boxplot uses fill). -->
+
+[Write here.]
+
+### Analysis
+
+```{r}
+#| label: q1-data
+# Paste the data preparation part of Question_1.R here (steps 1 to 5).
+# Make sure it ends with the game_films table that has ROI and budget_group.
+```
+
+```{r}
+#| label: q1-boxplot
+#| fig-cap: "ROI by budget group"
+# Paste the boxplot code here.
+```
+
+```{r}
+#| label: q1-scatter
+#| fig-cap: "Budget vs ROI"
+# Paste the scatterplot code here (it also runs cor.test for the subtitle).
+```
+
+### Discussion
+
+<!-- 1-3 paragraphs: what the plots show (and do not show), and why you think so.
+Mention limitations: small sample, only theatrical films, no genre, marketing not in budget.
+Use inline code for every number, for example: -->
+
+The final sample has `r nrow(game_films)` films.
+
+[Write here.]
+
+## Question 2: [Title that matches the question, e.g. "Do critics and audiences agree?"]
+
+### Introduction
+
+[Question, variables (rotten_tomatoes, metacritic, cinema_score, release_date), why you are interested.]
+
+### Approach
+
+[Two different plot types and why each one is the best choice. At least one uses color or facets.]
+
+### Analysis
+
+```{r}
+#| label: q2-data
+grades <- c("A+" = 100, "A" = 97, "A-" = 93, "B+" = 90, "B" = 87, "B-" = 84,
+            "C+" = 80, "C" = 77, "C-" = 74, "D+" = 70, "D" = 67, "D-" = 64, "F" = 57)
+
+q2 <- game_films_raw |>
+  mutate(audience = unname(grades[cinema_score]),
+         critic   = (rotten_tomatoes + metacritic) / 2,
+         gap      = audience - critic) |>
+  filter(!is.na(gap))
+```
+
+```{r}
+#| label: q2-gap-over-time
+#| fig-cap: "Audience minus critic score over time"
+ggplot(q2, aes(release_date, gap)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_point(color = "#08519c", size = 2.5) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "Release date", y = "Audience minus critics (points)") +
+  theme_minimal()
+```
+
+```{r}
+#| label: q2-biggest-gaps
+#| fig-cap: "Films where audiences and critics disagreed most"
+q2 |>
+  slice_max(abs(gap), n = 8) |>
+  ggplot(aes(reorder(title, gap), gap, fill = gap > 0)) +
+  geom_col() +
+  coord_flip() +
+  labs(x = NULL, y = "Audience minus critics (points)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+### Discussion
+
+[What the plots show, why, and limitations (small sample, fans may inflate CinemaScore, letter grades converted to numbers).]
