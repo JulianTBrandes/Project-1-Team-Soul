@@ -19,62 +19,138 @@ game_films_raw <- readr::read_csv("data/game_films.csv")
 
 ## Introduction
 
-<!-- 1-2 paragraphs, max 5 sentences each. Imagine the grader has never seen the dataset.
-Say: what the dataset is, where it comes from (Wikipedia list, published on TidyTuesday),
-how many rows/columns, and describe EVERY variable used in Q1 and Q2.
-Use inline code for numbers, for example: -->
+This project uses the "Films Based on Video Games" dataset, compiled from a Wikipedia list and published on TidyTuesday on 2026-06-09. It has 'r nrow(game_films_raw)' films and 'r ncol(game_films_raw)'columns, and each row is one film(theatrical,direct-to-video, television,short or documentary).Many budget,box office and score values are missing,so we focus mostly on theatrical releases.Our team chose it because video game adaptations are popular and often criticized,and we wanted to see whether they make money and how critics and audiences react.
 
-The dataset has `r nrow(game_films_raw)` films and `r ncol(game_films_raw)` columns.
+We answer two questions.Question 1 asks whether films with bigger budgets earn a better return on investment (ROI),using budget_low' and 'budget_high'(the lowest and highest estimated budget)and 'worldwide_box_office'(total worldwide earnings).The currency columns 'budget_currency' and 'worldwide_box_office_currency' give the currency symbol of each amount, and we match budget to box office using 'title','director' and 'release_date'(the day the film came out).Question 2 asks whether critics and audiences agree and whether the gap changes over time,using 'rotten_tomatoes'(percent of positive critic reviews), 'metacritic'(critic score out of 100),'cinema_score'(audience letter grade from A+ to F) and 'release_date'.
 
-[Write the rest here.]
 
 ## Question 1: [Title that matches the question, e.g. "Do bigger budgets earn a better return?"]
 
 ### Introduction
 
-<!-- 1-2 paragraphs: the question, which variables are needed (budget_low, budget_high,
-worldwide_box_office, currencies, release_date, OECD CPI), and WHY you are interested. -->
+Do films based on video games earn a better return on investment (ROI) when they have bigger budgets, or do low and medium budget films do better? We define ROI as '(worldwide box office - budget)/budget', so an ROI of 1 means the film earned a profit equal to its whole budget, and a negative ROI means it lost money. To answer this we use 'budget_low' and 'budget_high', 'worldwide_box_office',the two currency columns,'release_date',and an OECD consumer price index(CPI) table that puts all money in today's USD.
 
-[Write here.]
+We are interested in this because box office totals make expensive films look best by default,while ROI shows how much a film earned compared to what was risked.This matters for anyone deciding how much to spend on a new game adaptation.
 
 ### Approach
 
-<!-- 1-2 paragraphs: name each plot and say why it is the best choice.
-Plot 1 = boxplot (compares median and spread of ROI across budget groups, handles skewed data).
-Plot 2 = scatterplot (shows budget vs ROI without cutting budget into groups).
-Two different plot types, and at least one uses color or facets (the boxplot uses fill). -->
+To compare films fairly, we first put all money on the same scale. The budget is the midpoint of 'budget_low' and 'budget_high',and both budget and box office are adjusted for inflation with the CPI of their own currency and release year,then converted to USD.We then calculate ROI, because it measures what a film earned compared to what was risked instead of rewarding big budgets by default.
 
-[Write here.]
+We split the films into three budget groups(low, medium and high) using thirds of the budget, so each group has about the same number of films and we do not have to choose arbitrary dollar cutoffs. We chose a 'boxplot' of ROI by group,with the boxes colored by group, because it shows the median and the spread of each group,and a few huge hits do not distort it the way they would distort an average.Each film is also drawn as a dot,so the sample size stays visible.
 
 ### Analysis
 
 ```{r}
 #| label: q1-data
-# Paste the data preparation part of Question_1.R here (steps 1 to 5).
-# Make sure it ends with the game_films table that has ROI and budget_group.
+
+# Step 1: Load the inflation (CPI) table and keep only the index values
+CPI_raw <- readr::read_csv('00_raw_data/OECD_Table.csv')
+CPI <- CPI_raw |>
+  filter(UNIT_MEASURE == "IX") |>
+  select(REF_AREA,TIME_PERIOD,OBS_VALUE,OBS_VALUE_TODAY)
+
+# Step 2: Lookup table: currency symbol -> country code and exchange rate to USD
+currency_country <- tibble(
+  budget_currency = c("$", "¥", "£"),
+  worldwide_box_office_currency = c("$", "¥", "£"),
+  country_code = c("USA", "JPN", "GBR"),
+  exchange_rate = c(1,0.0063,1.32))
+
+# Step 3: Budget in today's value in USD (midpoint of low and high, adjusted with the CPI)
+game_films_budget <- game_films_raw |>
+  filter(!is.na(budget_currency)) |>
+  mutate(
+    budget_estimate = (budget_low+budget_high)/2,
+    release_year = as.double(format(release_date,"%Y")))
+
+game_films_budget <- left_join(
+  game_films_budget,
+  currency_country,
+  by="budget_currency")
+
+game_films_budget <- left_join(
+  game_films_budget,
+  CPI,
+  by=c(
+    "country_code"="REF_AREA",
+    "release_year"="TIME_PERIOD"
+    ))
+
+game_films_budget <- game_films_budget |>
+  mutate(
+    budget_estimate_today = budget_estimate*(OBS_VALUE_TODAY/OBS_VALUE),
+    budget_estimate_today_usd = budget_estimate_today*exchange_rate)
+
+# Step 4: Box office in today's value in USD (same steps as the budget)
+game_films_box_office <- game_films_raw |>
+  filter(!is.na(worldwide_box_office_currency)) |>
+  mutate(release_year = as.double(format(release_date,"%Y")))
+
+game_films_box_office <- left_join(
+  game_films_box_office,
+  currency_country,
+  by="worldwide_box_office_currency")
+
+game_films_box_office <- left_join(
+  game_films_box_office,
+  CPI,
+  by=c(
+    "country_code"="REF_AREA",
+    "release_year"="TIME_PERIOD"
+  ))
+
+game_films_box_office <- game_films_box_office |>
+  mutate(
+    worldwide_box_office_today = worldwide_box_office*(OBS_VALUE_TODAY/OBS_VALUE),
+    worldwide_box_office_today_usd = worldwide_box_office_today*exchange_rate)
+
+# Step 5: Join budget and box office (only films that have both), then compute ROI
+game_films <- inner_join(
+  game_films_budget,
+  game_films_box_office,
+  by=c("title","director","release_date"))
+
+game_films <- game_films |>
+  select(category.x:release_date,original_game_publisher.x,budget_estimate_today_usd,worldwide_box_office_today_usd) |>
+  mutate(ROI = (worldwide_box_office_today_usd-budget_estimate_today_usd)/budget_estimate_today_usd) 
+
+# Step 6: Split budget into three groups with about the same number of films
+budget_cutoff <- quantile(
+  game_films$budget_estimate_today_usd,
+  probs = c(0,1/3,2/3,1))
+
+game_films$budget_group <- cut(game_films$budget_estimate_today_usd,breaks=budget_cutoff,labels=c("Low\n$3-46M","Medium\n$46-92M","High\n$92-259M"),include.lowest=TRUE)
 ```
+
 
 ```{r}
 #| label: q1-boxplot
 #| fig-cap: "ROI by budget group"
-# Paste the boxplot code here.
+game_films %>%
+  ggplot(aes(x=budget_group, y=ROI, fill=budget_group,label=title)) +
+  geom_boxplot(alpha = 0.6) +
+  #geom_text(aes(label=ifelse(ROI>10,as.character(title),'')),hjust=0,vjust=-0.5) +
+  geom_jitter(color="black", size=0.4, alpha=0.9) + scale_y_continuous(labels = function(x) paste0(x, "x")) +
+  scale_y_continuous(n.breaks = 20) +
+  theme_minimal()+
+  theme(
+    legend.position="none",
+    plot.title = element_text(size=11)
+  ) +
+  ggtitle("ROI by Budget Group") +
+  xlab("")
 ```
 
-```{r}
-#| label: q1-scatter
-#| fig-cap: "Budget vs ROI"
-# Paste the scatterplot code here (it also runs cor.test for the subtitle).
-```
+
 
 ### Discussion
 
-<!-- 1-3 paragraphs: what the plots show (and do not show), and why you think so.
-Mention limitations: small sample, only theatrical films, no genre, marketing not in budget.
-Use inline code for every number, for example: -->
+The median ROI rises with budget: 0.68 for low (21 films),1.40 for medium (20) and 1.85 for high (20),so bigger-budget films did not earn worse returns, which is the opposite of what we expected.The low group is the least predictable.43% of its films lost money,yet it also has the biggest hit,with an ROI of 33.5,because a cheap film needs only a small box office for a large ROI.The boxes overlap a lot, so the differences between groups are small.
 
-The final sample has `r nrow(game_films)` films.
+The boxplot shows the median, the spread and every film at once,but a few extreme hits stretch the y-axis and make the boxes hard to compare,and it does not say which films the outliers are.The results cover only 61 theatrical films,we did not look at genre,budgets do not include marketing,and box office is not profit.
 
-[Write here.]
+
+
 
 ## Question 2: [Title that matches the question, e.g. "Do critics and audiences agree?"]
 
