@@ -1,6 +1,6 @@
 ---
-title: "Video Game Movies: Money and Reviews"
-subtitle: "INFO 526 Project 1"
+title: "Video Game Adaptations"
+subtitle: "Analyzing the financial performance and critic response to popular films based on video games"
 author: "Team Soul: Jacob Hoover, Sanjana Sudulaganti, Jesus Castillo, Julian Brandes"
 format: html
 execute:
