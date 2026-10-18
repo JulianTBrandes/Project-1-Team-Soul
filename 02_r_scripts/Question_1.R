@@ -85,19 +85,51 @@ budget_cutoff <- quantile(
 
 game_films$budget_group <- cut(game_films$budget_estimate_today_usd,breaks=budget_cutoff,labels=c("Low\n$3-46M","Medium\n$46-92M","High\n$92-259M"),include.lowest=TRUE)
 
+#Median ROI per budget group
+medians <- game_films |>
+  dplyr::group_by(budget_group) |>
+  dplyr::summarise(median_ROI = median(ROI))
+
 write.csv(game_films, "01_tidy_data/Q1.csv")
-
+# Figure 1
 game_films %>%
-  ggplot(aes(x=budget_group, y=ROI, fill=budget_group,label=title)) +
-  geom_boxplot(alpha = 0.6) +
-  #geom_text(aes(label=ifelse(ROI>10,as.character(title),'')),hjust=0,vjust=-0.5) +
-  geom_jitter(color="black", size=0.4, alpha=0.9) + scale_y_continuous(labels = function(x) paste0(x, "x")) +
-  scale_y_continuous(n.breaks = 20) +
-  theme_minimal()+
-  theme(
-    legend.position="none",
-    plot.title = element_text(size=11)
+  ggplot(aes(x = budget_group, y = ROI, fill = budget_group)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey40") +
+  geom_boxplot(alpha = 0.6, outlier.shape = NA) +
+  geom_jitter(width = 0.15, size = 1.3, alpha = 0.8) +
+  geom_text(data = dplyr::filter(game_films, ROI > 10), aes(label = title),
+            nudge_x = 0.22, hjust = 0, size = 3) +
+  geom_label(data = medians,
+             aes(x = budget_group, y = 0.3 * max(game_films$ROI),
+                 label = sprintf("Median ROI: %.1fx", median_ROI)),
+             inherit.aes = FALSE, fill = "white", size = 3.5) +
+  scale_fill_brewer(palette = "Set2") +
+  scale_x_discrete(expand = expansion(add = c(0.6, 1.4))) +
+  scale_y_continuous(n.breaks = 10, labels = scales::label_number(suffix = "x")) +
+  labs(
+    title = "Low-budget films have the biggest hits, but not a higher typical ROI",
+    subtitle = "ROI = (worldwide box office - budget) / budget",
+    x = "Budget group (inflation-adjusted, today's USD)",
+    y = "Return on investment"
   ) +
-  ggtitle("ROI by Budget Group") +
-  xlab("")
+  theme_minimal() +
+  theme(legend.position = "none")
 
+# Figure 2: budget vs worldwide box office (log scales)
+ggplot(game_films, aes(x = budget_estimate_today_usd / 1e6,
+                       y = worldwide_box_office_today_usd / 1e6,
+                       color = budget_group)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey40") +
+  geom_point(size = 2.6, alpha = 0.85) +
+  scale_x_log10(labels = scales::label_dollar(suffix = "M", accuracy = 1)) +
+  scale_y_log10(labels = scales::label_dollar(suffix = "M", accuracy = 1)) +
+  scale_color_brewer(palette = "Set2", labels = function(x) gsub("\n", " ", x)) +
+  labs(
+    title = "Bigger budgets earn bigger grosses",
+    subtitle = "Dashed line: worldwide box office equals budget",
+    x = "Production budget (log scale)",
+    y = "Worldwide box office (log scale)",
+    color = "Budget tier"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
