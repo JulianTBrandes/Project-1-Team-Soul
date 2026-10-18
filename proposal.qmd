@@ -1,6 +1,7 @@
 ---
-title: "Proposal title"
-subtitle: "Proposal"
+title: "Video Game Adaptations"
+subtitle: "Analyzing the financial performance and critic response to popular films based on video games"
+author: "Team Soul: Jacob Hoover, Sanjana Sudulaganti, Jesus Castillo, Julian Brandes"
 format: html
 editor: visual
 ---
@@ -16,16 +17,28 @@ library(tidyverse)
 ```{r}
 #| label: load-dataset
 #| message: false
+game_films <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2026/2026-06-09/game_films.csv")
 ```
 
-A brief description of your dataset including its provenance, dimensions, etc. as well as the reason why you chose this dataset.
-
-Make sure to load the data and use inline code for some of this information.
+We chose the **Films Based on Video Games** dataset because we want to explore how these films perform financially and how critics and audiences receive them, which could give executives useful insight. The data was compiled from the Wikipedia page "List of films based on video games" and published by TidyTuesday on 2026-06-09 ([source](https://github.com/rfordatascience/tidytuesday/blob/main/data/2026/2026-06-09/game_films.csv)). It has `r nrow(game_films)` rows and `r ncol(game_films)` columns, where each row is one film or adaptation, and `r sum(game_films$category == "Theatrical releases")` of them are theatrical releases. Release dates run from `r format(min(game_films$release_date, na.rm = TRUE), "%Y")` to `r format(max(game_films$release_date, na.rm = TRUE), "%Y")`, including announced upcoming titles. Budget and box office are missing for most films (`r round(100 * mean(is.na(game_films$budget_low)))`% and `r round(100 * mean(is.na(game_films$worldwide_box_office)))`%), so our results will mainly describe theatrical releases.
 
 ## Questions
 
-The two questions you want to answer.
+1\. Does a higher production budget lead to a better return on investment (ROI), or do low and mid budget films earn better returns?
+
+2. Do critics (Rotten Tomatoes, Metacritic) and audiences (CinemaScore) agree about these films, and has that gap changed over time?
 
 ## Analysis plan
 
--   A plan for answering each of the questions including the variables involved, variables to be created (if any), external data to be merged in (if any).
+## Analysis plan
+
+- **Question 1: Budget and return on investment**
+  - **Variables involved:** `budget_low`, `budget_high`, `budget_currency`, `worldwide_box_office`, `worldwide_box_office_currency`, `category` and `release_date`.
+  - **Variables to be created:** a budget estimate (the midpoint of `budget_low` and `budget_high`), budget and box office in today's USD, ROI (worldwide box office divided by the budget estimate), and a budget group (low, mid or high) based on terciles.
+  - **External data to be merged in:** consumer price index (CPI) tables from the OECD to convert historic budgets and box office into today's value, and exchange rates to convert all currencies to USD.
+  - **Approach:** compare ROI across the three budget groups with boxplots and median ROI, and check the link between budget and ROI with a Spearman correlation.
+- **Question 2: Critics and audiences**
+  - **Variables involved:** `rotten_tomatoes`, `metacritic`, `cinema_score` and `release_date`.
+  - **Variables to be created:** CinemaScore letter grades converted to a 0-100 scale, a critic score from Rotten Tomatoes and Metacritic, and the gap (audience score minus critic score).
+  - **External data to be merged in:** none.
+  - **Approach:** plot the gap against release year and fit a simple trend to see whether it changes over time.

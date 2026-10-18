@@ -1,11 +1,11 @@
 ---
-title: "Project title"
-subtitle: "INFO 526 - Project 1"
-author: "Team name"
+title: "Video Game Adaptations"
+subtitle: "Analyzing the financial performance and critic response to popular films based on video games"
+author: "Team Soul: Jacob Hoover, Sanjana Sudulaganti, Jesus Castillo, Julian Brandes"
 format: html
 editor: visual
 ---
 
 ## Abstract
 
-Add project abstract here.
+Films based on video games are popular and often criticized, but it is unclear whether they pay off financially or please both critics and audiences. This project uses the TidyTuesday "Films Based on Video Games" dataset, compiled from a Wikipedia list of 439 films, and focuses on the theatrical releases that have complete data. Our first question asks whether bigger budgets earn a better return on investment (ROI). After adjusting budgets and box office for inflation and converting them to USD, we compared 61 films across low, medium and high budget groups. Median ROI was 0.68 for low, 1.40 for medium and 1.85 for high budget films, so bigger budgets did not earn worse returns, although low budget films produced the biggest hits and the most losses. Our second question asks whether critics and audiences agree and whether the gap has changed over time. For the 51 films with Rotten Tomatoes, Metacritic and CinemaScore ratings, audiences scored every film higher than critics did, but the average gap shrank from 55 points before 2010 to 43 points in the 2020s as critic scores rose. Our results are descriptive and apply only to the small set of films with financial and rating data.
