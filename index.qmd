@@ -14,7 +14,9 @@ execute:
 library(dplyr)
 library(ggplot2)
 
-game_films_raw <- readr::read_csv("data/game_films.csv")
+game_films_raw <- readr::read_csv(
+  "https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2026/2026-06-09/game_films.csv"
+)
 ```
 
 ## Introduction
@@ -24,19 +26,21 @@ This project uses the "Films Based on Video Games" dataset, compiled from a Wiki
 We answer two questions.Question 1 asks whether films with bigger budgets earn a better return on investment (ROI),using budget_low' and 'budget_high'(the lowest and highest estimated budget)and 'worldwide_box_office'(total worldwide earnings).The currency columns 'budget_currency' and 'worldwide_box_office_currency' give the currency symbol of each amount, and we match budget to box office using 'title','director' and 'release_date'(the day the film came out).Question 2 asks whether critics and audiences agree and whether the gap changes over time,using 'rotten_tomatoes'(percent of positive critic reviews), 'metacritic'(critic score out of 100),'cinema_score'(audience letter grade from A+ to F) and 'release_date'.
 
 
-## Question 1: [Title that matches the question, e.g. "Do bigger budgets earn a better return?"]
+## Question 1: Do Bigger Budgets Earn a Better Return?
 
 ### Introduction
 
-Do films based on video games earn a better return on investment (ROI) when they have bigger budgets, or do low and medium budget films do better? We define ROI as '(worldwide box office - budget)/budget', so an ROI of 1 means the film earned a profit equal to its whole budget, and a negative ROI means it lost money. To answer this we use 'budget_low' and 'budget_high', 'worldwide_box_office',the two currency columns,'release_date',and an OECD consumer price index(CPI) table that puts all money in today's USD.
+Do films based on video games earn a better return on investment (ROI) when they have bigger budgets, or do low and medium budget films do better? We define ROI as `(worldwide box office - budget) / budget`, so an ROI of 1 means the film earned a profit equal to its whole budget, and a negative ROI means it lost money. To answer this we use `budget_low` and `budget_high`, `worldwide_box_office`, the two currency columns, `release_date`, and an OECD consumer price index (CPI) table that puts all money in today's USD.
 
-We are interested in this because box office totals make expensive films look best by default,while ROI shows how much a film earned compared to what was risked.This matters for anyone deciding how much to spend on a new game adaptation.
+We are interested in this because box office totals make expensive films look best by default, while ROI shows how much a film earned compared to what was risked. This matters for anyone deciding how much to spend on a new game adaptation.
 
 ### Approach
 
-To compare films fairly, we first put all money on the same scale. The budget is the midpoint of 'budget_low' and 'budget_high',and both budget and box office are adjusted for inflation with the CPI of their own currency and release year,then converted to USD.We then calculate ROI, because it measures what a film earned compared to what was risked instead of rewarding big budgets by default.
-
 We split the films into three budget groups(low, medium and high) using thirds of the budget, so each group has about the same number of films and we do not have to choose arbitrary dollar cutoffs. We chose a 'boxplot' of ROI by group,with the boxes colored by group, because it shows the median and the spread of each group,and a few huge hits do not distort it the way they would distort an average.Each film is also drawn as a dot,so the sample size stays visible.
+
+We split the films into three budget groups (low, medium and high) using thirds of the budget, so each group has about the same number of films and we do not have to choose arbitrary dollar cutoffs. Our first plot is a boxplot of ROI by group, with the boxes colored by group, because it shows the median and the spread of each group, and a few huge hits do not distort it the way they would distort an average (Healy 2018, Ch. 4). Each film is also drawn as a dot so the sample size stays visible, and a label prints the median ROI of each group so the groups can be compared directly.
+
+Our second plot is a scatterplot of each film's budget against its worldwide box office, both on log scales and colored by budget group. A scatterplot is the right choice because it uses every film's exact budget instead of cutting budget into groups, so we can check that the boxplot result does not depend on where the group boundaries fall (Healy 2018, Ch. 3). The log scales keep a $3 million film and a $250 million film readable on the same axes. A dashed line marks where box office equals budget, so a film above the line earned more than it cost and its distance from the line reflects its ROI. The two plots are of different types, and both use color to show the budget groups.
 
 ### Analysis
 
@@ -120,86 +124,175 @@ budget_cutoff <- quantile(
   probs = c(0,1/3,2/3,1))
 
 game_films$budget_group <- cut(game_films$budget_estimate_today_usd,breaks=budget_cutoff,labels=c("Low\n$3-46M","Medium\n$46-92M","High\n$92-259M"),include.lowest=TRUE)
-```
 
+# Step 7: Summary numbers per budget group (used in the plot label and the discussion)
+group_summary <- game_films |>
+  group_by(budget_group) |>
+  summarise(n = n(), median_ROI = median(ROI), pct_loss = mean(ROI < 0))
+```
 
 ```{r}
 #| label: q1-boxplot
 #| fig-cap: "ROI by budget group"
 game_films %>%
-  ggplot(aes(x=budget_group, y=ROI, fill=budget_group,label=title)) +
-  geom_boxplot(alpha = 0.6) +
-  #geom_text(aes(label=ifelse(ROI>10,as.character(title),'')),hjust=0,vjust=-0.5) +
-  geom_jitter(color="black", size=0.4, alpha=0.9) + scale_y_continuous(labels = function(x) paste0(x, "x")) +
-  scale_y_continuous(n.breaks = 20) +
-  theme_minimal()+
-  theme(
-    legend.position="none",
-    plot.title = element_text(size=11)
+  ggplot(aes(x = budget_group, y = ROI, fill = budget_group)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey40") +
+  geom_boxplot(alpha = 0.6, outlier.shape = NA) +
+  geom_jitter(width = 0.15, size = 1.3, alpha = 0.8) +
+  geom_text(data = dplyr::filter(game_films, ROI > 10), aes(label = title),
+            nudge_x = 0.22, hjust = 0, size = 3) +
+  geom_label(data = group_summary,
+             aes(x = budget_group, y = 0.3 * max(game_films$ROI),
+                 label = sprintf("Median ROI: %.1fx", median_ROI)),
+             inherit.aes = FALSE, fill = "white", size = 3.5) +
+  scale_fill_brewer(palette = "Set2") +
+  scale_x_discrete(expand = expansion(add = c(0.6, 1.4))) +
+  scale_y_continuous(n.breaks = 10, labels = scales::label_number(suffix = "x")) +
+  labs(
+    title = "Low-budget films have the biggest hits, but not a higher typical ROI",
+    subtitle = "ROI = (worldwide box office - budget) / budget",
+    x = "Budget group (inflation-adjusted, today's USD)",
+    y = "Return on investment"
   ) +
-  ggtitle("ROI by Budget Group") +
-  xlab("")
-```
-
-
-
-### Discussion
-
-The median ROI rises with budget: 0.68 for low (21 films),1.40 for medium (20) and 1.85 for high (20),so bigger-budget films did not earn worse returns, which is the opposite of what we expected.The low group is the least predictable.43% of its films lost money,yet it also has the biggest hit,with an ROI of 33.5,because a cheap film needs only a small box office for a large ROI.The boxes overlap a lot, so the differences between groups are small.
-
-The boxplot shows the median, the spread and every film at once,but a few extreme hits stretch the y-axis and make the boxes hard to compare,and it does not say which films the outliers are.The results cover only 61 theatrical films,we did not look at genre,budgets do not include marketing,and box office is not profit.
-
-
-
-
-## Question 2: [Title that matches the question, e.g. "Do critics and audiences agree?"]
-
-### Introduction
-
-[Question, variables (rotten_tomatoes, metacritic, cinema_score, release_date), why you are interested.]
-
-### Approach
-
-[Two different plot types and why each one is the best choice. At least one uses color or facets.]
-
-### Analysis
-
-```{r}
-#| label: q2-data
-grades <- c("A+" = 100, "A" = 97, "A-" = 93, "B+" = 90, "B" = 87, "B-" = 84,
-            "C+" = 80, "C" = 77, "C-" = 74, "D+" = 70, "D" = 67, "D-" = 64, "F" = 57)
-
-q2 <- game_films_raw |>
-  mutate(audience = unname(grades[cinema_score]),
-         critic   = (rotten_tomatoes + metacritic) / 2,
-         gap      = audience - critic) |>
-  filter(!is.na(gap))
-```
-
-```{r}
-#| label: q2-gap-over-time
-#| fig-cap: "Audience minus critic score over time"
-ggplot(q2, aes(release_date, gap)) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  geom_point(color = "#08519c", size = 2.5) +
-  geom_smooth(method = "lm", se = FALSE) +
-  labs(x = "Release date", y = "Audience minus critics (points)") +
-  theme_minimal()
-```
-
-```{r}
-#| label: q2-biggest-gaps
-#| fig-cap: "Films where audiences and critics disagreed most"
-q2 |>
-  slice_max(abs(gap), n = 8) |>
-  ggplot(aes(reorder(title, gap), gap, fill = gap > 0)) +
-  geom_col() +
-  coord_flip() +
-  labs(x = NULL, y = "Audience minus critics (points)") +
   theme_minimal() +
   theme(legend.position = "none")
 ```
 
+```{r}
+#| label: q1-scatter
+#| fig-cap: "Budget vs worldwide box office (log scales)"
+ggplot(game_films, aes(x = budget_estimate_today_usd / 1e6,
+                       y = worldwide_box_office_today_usd / 1e6,
+                       color = budget_group)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey40") +
+  geom_point(size = 2.6, alpha = 0.85) +
+  scale_x_log10(labels = scales::label_dollar(suffix = "M", accuracy = 1)) +
+  scale_y_log10(labels = scales::label_dollar(suffix = "M", accuracy = 1)) +
+  scale_color_brewer(palette = "Set2", labels = function(x) gsub("\n", " ", x)) +
+  labs(
+    title = "Bigger budgets earn bigger grosses",
+    subtitle = "Dashed line: worldwide box office equals budget",
+    x = "Production budget (log scale)",
+    y = "Worldwide box office (log scale)",
+    color = "Budget tier"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
 ### Discussion
 
-[What the plots show, why, and limitations (small sample, fans may inflate CinemaScore, letter grades converted to numbers).]
+The median ROI rises with budget: `r sprintf("%.2f", group_summary$median_ROI[1])` for low (`r group_summary$n[1]` films), `r sprintf("%.2f", group_summary$median_ROI[2])` for medium (`r group_summary$n[2]`) and `r sprintf("%.2f", group_summary$median_ROI[3])` for high (`r group_summary$n[3]`), so bigger-budget films did not earn worse returns, which is the opposite of what we expected. The low group is the least predictable. `r round(100 * group_summary$pct_loss[1])`% of its films lost money, yet it also has the biggest hit, with an ROI of `r sprintf("%.1f", max(game_films$ROI))`, because a cheap film needs only a small box office for a large ROI. The boxes overlap a lot, so the differences between groups are small.
+
+Figure 2 shows the same pattern in absolute terms: box office tends to rise with budget, but the points scatter widely around the dashed break-even line, and `r sum(game_films$ROI < 0)` of the `r nrow(game_films)` films ended below it. The three biggest hits, *Pokémon: The First Movie*, *Iron Lung* and *Five Nights at Freddy's*, all have low budgets, and we think this is because each already had a large following (two major game franchises and a well-known YouTuber). A cheap film cannot create that audience, so low-budget ROI looks more like a lottery that a few franchise films win. High-budget films mostly sit within a few times their budget, so their returns are steadier than those of low-budget films.
+
+A few extreme hits stretch the y-axis of Figure 1, which makes the boxes harder to compare, so we label them by name. The results cover only `r nrow(game_films)` theatrical films, and we did not look at genre. Budgets are estimates that do not include marketing, and box office is gross ticket sales, not profit, so an ROI near zero likely means a loss. Our conclusions are descriptive and do not show that budget causes returns.
+
+## Question 2: Do Critics and Audiences Agree on Video Game Films?
+
+### Introduction
+
+Do critics and audiences agree about films based on video games, and has the distance between them changed over time? Critics are represented by `rotten_tomatoes` (the Rotten Tomatoes critic score, the percent of positive reviews) and `metacritic` (a weighted average of critic scores out of 100). Audiences are represented by `cinema_score`, the letter grade (A+ to F) given by audiences polled on opening weekend, and we use `release_date` to place each film in time. The dataset has no Rotten Tomatoes audience score, so CinemaScore is our only audience measure, and it has to be converted from letters to points before it can be compared with the critic scores.
+
+We are interested in this because video game films often seem to be like by fans and disliked by reviewers, and a studio would want to know whether that pattern is real and whether it is fading. We define the gap as the audience score minus the critic score, where the critic score is the average of the Rotten Tomatoes and Metacritic scores. A positive gap means audiences rated the film higher than critics did. Only some theatrical films have all three ratings, so this analysis covers a small, better-known subset of releases.
+
+### Approach
+
+Our first plot is a scatterplot of the gap against release date with a fitted linear trend line. A scatterplot shows every film as a point, so we can see the spread of the gap and spot unusual films, and the trend line summarizes whether the gap is rising, falling or flat (Healy 2018, Ch. 3). The points are colored by the budget group from Question 1 to check whether expensive or cheap films behave differently. We did not use yearly averages because there are too few films per year for them to be reliable.
+
+Our second plot compares critics and audiences by era (before 2010, the 2010s and the 2020s). For each era it shows the average critic score and the average audience score as two colored dots joined by a line, so the length of the line is the gap. This dumbbell plot is the clearest way to show how far apart two scores are, and it also shows whether the gap shrinks because one group moves or both do. The eras are only a way to get groups of 15 to 21 films, so the cutoffs are our choice. The two plots are of different types, and both use color.
+
+### Analysis
+
+The first block converts CinemaScore grades to points (about three points per grade step, from A+ = 100 down to F- = 54) and computes the gap. Missing and "N/A" grades stay missing, so only films with all three ratings and a release date are kept. It also adds the budget group from Question 1, creates the eras, and computes the numbers used in the discussion.
+
+```{r}
+#| label: q2-data
+grades <- c("A+" = 100, "A" = 97, "A-" = 93,
+            "B+" = 90,  "B" = 87, "B-" = 84,
+            "C+" = 80,  "C" = 77, "C-" = 74,
+            "D+" = 70,  "D" = 67, "D-" = 64,
+            "F+" = 60,  "F" = 57, "F-" = 54)
+
+q2 <- game_films_raw |>
+  mutate(
+    audience = unname(grades[cinema_score]),   # "N/A" and NA become NA
+    critic   = (rotten_tomatoes + metacritic) / 2,
+    gap      = audience - critic,
+    year     = as.numeric(format(release_date, "%Y"))
+  ) |>
+  # budget group comes from the Question 1 table
+  left_join(select(game_films, title, director, release_date, budget_group),
+            by = c("title", "director", "release_date")) |>
+  filter(!is.na(gap), !is.na(release_date)) |>
+  mutate(era = cut(year, breaks = c(-Inf, 2009, 2019, Inf),
+                   labels = c("Before 2010", "2010s", "2020s")))
+
+# Average scores and gap per era (used in the second plot and the discussion)
+era_summary <- q2 |>
+  group_by(era) |>
+  summarise(n = n(), mean_gap = mean(gap),
+            mean_critic = mean(critic), mean_audience = mean(audience)) |>
+  mutate(era_label = factor(paste0(era, "\n(n = ", n, ")"),
+                            levels = paste0(era, "\n(n = ", n, ")")))
+
+# Linear trend of the gap over time (used in the discussion)
+trend <- lm(gap ~ year, data = q2)
+rho2  <- cor.test(q2$year, q2$gap, method = "spearman", exact = FALSE)
+```
+
+Figure 3 shows the gap for each film over time, colored by budget group, with a linear trend line.
+
+```{r}
+#| label: q2-gap-over-time
+#| fig-cap: "Audience minus critic score over time"
+ggplot(q2, aes(x = release_date, y = gap)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey40") +
+  geom_smooth(method = "lm", color = "grey30", fill = "grey60", alpha = 0.3) +
+  geom_point(aes(color = budget_group), size = 2.8) +
+  scale_color_brewer(palette = "Set2", na.value = "grey60",
+                     labels = function(x) gsub("\n", " ", x)) +
+  scale_y_continuous(limits = c(0, 80)) +
+  labs(
+    title = "Audiences rate game films higher than critics, but the gap is shrinking",
+    subtitle = "Above 0 means the audience score is higher than the critic score",
+    x = "Release date",
+    y = "Audience minus critics (points)",
+    color = "Budget group"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+Figure 4 shows the average critic and audience scores in each era. The line between the dots is the gap.
+
+```{r}
+#| label: q2-era
+#| fig-cap: "Average critic and audience scores by era"
+cols <- c("Critics" = "#D55E00", "Audience" = "#0072B2")
+
+ggplot(era_summary, aes(y = era_label)) +
+  geom_segment(aes(x = mean_critic, xend = mean_audience, yend = era_label),
+               color = "grey60", linewidth = 1.2) +
+  geom_point(aes(x = mean_critic,   color = "Critics"),  size = 4.5) +
+  geom_point(aes(x = mean_audience, color = "Audience"), size = 4.5) +
+  geom_text(aes(x = (mean_critic + mean_audience) / 2,
+                label = sprintf("gap %.0f", mean_gap)), vjust = -1.2, size = 3.5) +
+  scale_color_manual(values = cols) +
+  scale_x_continuous(limits = c(0, 100)) +
+  scale_y_discrete(limits = rev) +
+  labs(
+    title = "Critics are catching up with audiences, but a large gap remains",
+    x = "Average score (0-100)", y = NULL, color = NULL
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+### Discussion
+
+All `r nrow(q2)` films have a positive gap: audiences rated every film higher than critics did, by `r sprintf("%.0f", mean(q2$gap))` points on average (range `r sprintf("%.0f", min(q2$gap))` to `r sprintf("%.0f", max(q2$gap))`). The trend line in Figure 3 slopes downward by about `r sprintf("%.1f", abs(coef(trend)["year"]))` points per year (p = `r sprintf("%.3f", summary(trend)$coefficients["year", 4])`; Spearman's rho = `r sprintf("%.2f", unname(rho2$estimate))`), so the gap has narrowed over time even though it is still large for recent films. The scatter around the line is wide, and no budget group stands out, so the trend describes the typical film and not any single one.
+
+Figure 4 shows why the gap narrows. The average critic score rises from `r sprintf("%.0f", era_summary$mean_critic[1])` before 2010 to `r sprintf("%.0f", era_summary$mean_critic[2])` in the 2010s and `r sprintf("%.0f", era_summary$mean_critic[3])` in the 2020s, while the average audience score only moves from `r sprintf("%.0f", era_summary$mean_audience[1])` to `r sprintf("%.0f", era_summary$mean_audience[3])`, so the gap falls from `r sprintf("%.0f", era_summary$mean_gap[1])` to `r sprintf("%.0f", era_summary$mean_gap[3])` points. We think critics became kinder to recent adaptations, while audiences were already giving high grades to films that critics disliked, such as *Mortal Kombat Annihilation* and the early *Pokémon* films. A likely reason is that CinemaScore polls opening-weekend audiences, who are self-selected fans that came to see characters they already like.
+
+Two limitations matter. First, the gap partly reflects the measurement scales: CinemaScore grades cluster near the top and may be inflated by fans, while Rotten Tomatoes is the percent of positive reviews, so a positive gap is expected even if both groups felt the same way. The conversion of letter grades to points is also a judgment call, so the size of the gap is best read as a comparison across films and eras. Second, only `r nrow(q2)` films have all three ratings, CinemaScore mainly covers wide U.S. releases, and the era groups are small, so the trend may not hold for the rest of the data.
